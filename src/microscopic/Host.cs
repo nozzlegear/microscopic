@@ -39,6 +39,11 @@ namespace Microscopic
             return new HtmlResponse(html);
         }
 
+        public static IResponse Empty()
+        {
+            return new StringResponse("");
+        }
+
         public static async Task Start(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
         {
             var listener = new HttpListener();

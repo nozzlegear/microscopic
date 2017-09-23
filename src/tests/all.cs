@@ -4,6 +4,8 @@ using Microscopic;
 using Microscopic.Responses;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Net.Http;
+using Xunit.Sdk;
 
 namespace tests
 {
@@ -115,6 +117,54 @@ namespace tests
             token.Cancel();
 
             await host;
+        }
+
+        [Fact(DisplayName = "Has all expected properties")]
+        public async Task HasProperties()
+        {
+            var token = new CancellationTokenSource();
+            Exception exception = null;
+            var host = Host.Start("localhost", 8000, token, (req) =>
+            {
+                try
+                {
+                    Assert.NotNull(req.AcceptTypes);
+                    Assert.NotNull(req.Cookies);
+                    Assert.NotNull(req.Headers);
+                    Assert.True(req.IsLocal);
+                    Assert.Equal(HttpMethod.Get, req.Method);
+                    Assert.NotNull(req.QueryString);
+                    Assert.NotEmpty(req.RawUrl);
+                    // Assert.NotNull(req.Referrer);
+                    Assert.NotEmpty(req.RequestId);
+                    Assert.NotNull(req.Url);
+                    // Assert.NotNull(req.UserAgent);
+                    Assert.NotEmpty(req.UserHostAddress);
+                    Assert.NotEmpty(req.UserHostName);
+                }
+                catch (XunitException ex)
+                {
+                    // Wrap the original exception to preserve its stack trace. If you don't do this the stack trace will say this catch block threw the exception rather than the assertion.
+                    exception = new Exception(ex.Message, ex);
+
+                    throw exception;
+                }
+                finally
+                {
+                    token.Cancel();
+                }
+
+                return Host.Empty();
+            });
+
+            while (!token.IsCancellationRequested) { }
+
+            await host;
+
+            if (exception != null)
+            {
+                throw exception;
+            }
         }
     }
 }

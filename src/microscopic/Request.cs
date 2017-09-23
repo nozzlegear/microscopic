@@ -10,7 +10,7 @@ namespace Microscopic
     {
         public Request(HttpListenerRequest source)
         {
-            AcceptTypes = source.AcceptTypes;
+            AcceptTypes = source.AcceptTypes ?? new string[] { };
             Cookies = source.Cookies;
             HasBody = source.HasEntityBody;
             Headers = source.Headers;
