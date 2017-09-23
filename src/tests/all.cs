@@ -95,14 +95,26 @@ namespace tests
         [Fact(DisplayName = "Catches errors")]
         public async Task CatchesErrors()
         {
-            // var token = new CancellationTokenSource();
-            // token.CancelAfter(3000);
+            var token = new CancellationTokenSource();
+            bool thrown = false;
 
-            // Host.Start("localhost", 8000, token, (req) =>
-            // {
-            //     Assert.True(false);
-            //     return Host.Html("<h1 style='color: red'>Xunit should have hit an assertion failure.</h1>");
-            // });
+            var host = Host.Start("localhost", 8000, token, (req) =>
+            {
+                if (!thrown)
+                {
+                    thrown = true;
+
+                    throw new Exception("Something crazy happened by Microscopic caught it and didn't take down the server!");
+                }
+
+                return Host.Html("Donezo");
+            });
+
+            while (!thrown) { }
+
+            token.Cancel();
+
+            await host;
         }
     }
 }

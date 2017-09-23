@@ -54,9 +54,21 @@ namespace Microscopic
                 var context = await listener.GetContextAsync();
                 var contextReq = context.Request;
                 var req = new Request(contextReq);
-                var result = await handler(req);
+                IResponse result;
+
+                try
+                {
+                    result = await handler(req);
+                }
+                catch (Exception e)
+                {
+                    result = Json(e);
+                    result.StatusCode = 500;
+                }
+
                 var stringBytes = System.Text.Encoding.UTF8.GetBytes(result.SerializeToString());
 
+                context.Response.StatusCode = result.StatusCode;
                 context.Response.ContentType = result.Headers.FirstOrDefault(x => x.Key == "Content-Type").Value ?? "text/html";
                 context.Response.ContentLength64 = stringBytes.Length;
                 context.Response.OutputStream.Write(stringBytes, 0, stringBytes.Length);
