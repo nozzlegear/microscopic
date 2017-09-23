@@ -166,5 +166,19 @@ namespace tests
                 throw exception;
             }
         }
+
+        [Fact(DisplayName = "Does not drop requests.")]
+        public async Task DoesNotDropRequests()
+        {
+            var token = new CancellationTokenSource();
+            token.CancelAfter(15000);
+
+            await Host.Start("localhost", 8000, token, async (req) =>
+            {
+                await Task.Delay(1000);
+
+                return new StringResponse("OKay");
+            });
+        }
     }
 }

@@ -54,6 +54,13 @@ namespace Microscopic
 
             Console.WriteLine($"Microscopic: accepting connections at {address}");
 
+            // var requests = new HashSet<Task>();
+
+            // for (int i = 0; i < 100; i++)
+            // {
+            //     requests.Add(listener.GetContextAsync());
+            // }
+
             while (!token.IsCancellationRequested)
             {
                 var context = await listener.GetContextAsync();
