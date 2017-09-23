@@ -44,6 +44,31 @@ namespace Microscopic
             return new StringResponse("");
         }
 
+        private static async Task ProcessRequestAsync(HttpListenerContext context, Func<Request, Task<IResponse>> handler)
+        {
+            var contextReq = context.Request;
+            var req = new Request(contextReq);
+            IResponse result;
+
+            try
+            {
+                result = await handler(req);
+            }
+            catch (Exception e)
+            {
+                result = Json(e);
+                result.StatusCode = 500;
+            }
+
+            var stringBytes = System.Text.Encoding.UTF8.GetBytes(result.SerializeToString());
+
+            context.Response.StatusCode = result.StatusCode;
+            context.Response.ContentType = result.Headers.FirstOrDefault(x => x.Key == "Content-Type").Value ?? "text/html";
+            context.Response.ContentLength64 = stringBytes.Length;
+            context.Response.OutputStream.Write(stringBytes, 0, stringBytes.Length);
+            context.Response.Close();
+        }
+
         public static async Task Start(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
         {
             var listener = new HttpListener();
@@ -54,37 +79,30 @@ namespace Microscopic
 
             Console.WriteLine($"Microscopic: accepting connections at {address}");
 
-            // var requests = new HashSet<Task>();
+            var queue = new HashSet<Task>();
 
-            // for (int i = 0; i < 100; i++)
-            // {
-            //     requests.Add(listener.GetContextAsync());
-            // }
+            for (int i = 0; i < 100; i++)
+            {
+                queue.Add(listener.GetContextAsync());
+            }
 
             while (!token.IsCancellationRequested)
             {
-                var context = await listener.GetContextAsync();
-                var contextReq = context.Request;
-                var req = new Request(contextReq);
-                IResponse result;
+                token.Token.ThrowIfCancellationRequested();
 
-                try
+                var task = await Task.WhenAny(queue);
+
+                // Remove the task from the queue. It maybe a listener with a request, or a completed handler.
+                queue.Remove(task);
+
+                if (task is Task<HttpListenerContext>)
                 {
-                    result = await handler(req);
-                }
-                catch (Exception e)
-                {
-                    result = Json(e);
-                    result.StatusCode = 500;
-                }
+                    var context = await (task as Task<HttpListenerContext>);
 
-                var stringBytes = System.Text.Encoding.UTF8.GetBytes(result.SerializeToString());
-
-                context.Response.StatusCode = result.StatusCode;
-                context.Response.ContentType = result.Headers.FirstOrDefault(x => x.Key == "Content-Type").Value ?? "text/html";
-                context.Response.ContentLength64 = stringBytes.Length;
-                context.Response.OutputStream.Write(stringBytes, 0, stringBytes.Length);
-                context.Response.Close();
+                    // Add the handler to the async queue, then add a new listener to get us back to the desired number of listeners.
+                    queue.Add(ProcessRequestAsync(context, handler));
+                    queue.Add(listener.GetContextAsync());
+                }
             }
 
             listener.Stop();

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Net.Http;
 using Xunit.Sdk;
+using System.Collections.Generic;
 
 namespace tests
 {
@@ -170,15 +171,30 @@ namespace tests
         [Fact(DisplayName = "Does not drop requests.")]
         public async Task DoesNotDropRequests()
         {
+            int i = 8;
+            var random = new Random();
             var token = new CancellationTokenSource();
-            token.CancelAfter(15000);
-
-            await Host.Start("localhost", 8000, token, async (req) =>
+            var queue = new HashSet<Task>();
+            var host = Host.Start("localhost", 8000, token, async (req) =>
             {
-                await Task.Delay(1000);
+                i--;
 
-                return new StringResponse("OKay");
+                var delayLength = i <= 0 ? 0 : i * 1000;
+                var wait = Task.Delay(delayLength);
+
+                // Add the task to the queue so the while loop doesn't stop the server before it finishes. Then await it and remove it from the queue once done.
+                queue.Add(wait);
+                await wait;
+                queue.Remove(wait);
+
+                return new StringResponse(i.ToString());
             });
+
+            while (i > 0 || queue.Count > 0) { }
+
+            token.Cancel();
+
+            await host;
         }
     }
 }
