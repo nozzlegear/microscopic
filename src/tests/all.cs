@@ -10,16 +10,16 @@ namespace tests
     public class All
     {
         [Fact(DisplayName = "Returns Html")]
-        public void Html()
+        public async Task Html()
         {
             var token = new CancellationTokenSource();
             token.CancelAfter(2000);
 
-            Host.Start("localhost", 8000, token, "<h1>Hello world! Microscopic can return HTML strings.</h1>");
+            await Host.Start("localhost", 8000, token, "<h1>Hello world! Microscopic can return HTML strings.</h1>");
         }
 
         [Fact(DisplayName = "Returns strings")]
-        public void Strings()
+        public async Task Strings()
         {
             int i = 0;
             var token = new CancellationTokenSource();
@@ -37,10 +37,12 @@ namespace tests
                     break;
                 }
             }
+
+            await host;
         }
 
         [Fact(DisplayName = "Returns JSON")]
-        public void Json()
+        public async Task Json()
         {
             var token = new CancellationTokenSource();
             int i = 0;
@@ -59,10 +61,12 @@ namespace tests
                     break;
                 }
             }
+
+            await host;
         }
 
         [Fact(DisplayName = "Handles Async")]
-        public void HandlesAsync()
+        public async Task HandlesAsync()
         {
             var token = new CancellationTokenSource();
             int i = 0;
@@ -84,10 +88,12 @@ namespace tests
                     break;
                 }
             }
+
+            await host;
         }
 
         [Fact(DisplayName = "Catches errors")]
-        public void CatchesErrors()
+        public async Task CatchesErrors()
         {
             // var token = new CancellationTokenSource();
             // token.CancelAfter(3000);

@@ -71,9 +71,9 @@ namespace Microscopic
             return Start(host, port, token, (req) => Task.Run<IResponse>(() => handler(req)));
         }
 
-        public static void Start(string host, int port, CancellationTokenSource token, string html)
+        public static Task Start(string host, int port, CancellationTokenSource token, string html)
         {
-            Start(host, port, token, (req) => Html(html));
+            return Start(host, port, token, (req) => Html(html));
         }
     }
 }
