@@ -81,7 +81,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, expected);
+                var host = Host.StartAsync("localhost", 8000, token, expected);
                 var response = await SendRequest();
                 var responseBody = await response.Content.ReadAsStringAsync();
 
@@ -110,7 +110,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, (req) => new StringResponse(expected, "application/xml"));
+                var host = Host.StartAsync("localhost", 8000, token, (req) => new StringResponse(expected, "application/xml"));
                 var response = await SendRequest();
                 var responseBody = await response.Content.ReadAsStringAsync();
 
@@ -139,7 +139,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, (req) => Host.Json(data));
+                var host = Host.StartAsync("localhost", 8000, token, (req) => Host.Json(data));
                 var response = await SendRequest();
                 var responseBody = await response.Content.ReadAsStringAsync();
 
@@ -167,7 +167,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, async (req) =>
+                var host = Host.StartAsync("localhost", 8000, token, async (req) =>
                 {
                     await Task.Delay(1000);
 
@@ -201,7 +201,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, (req) =>
+                var host = Host.StartAsync("localhost", 8000, token, (req) =>
                 {
                     if (shouldThrow)
                     {
@@ -237,7 +237,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, (req) =>
+                var host = Host.StartAsync("localhost", 8000, token, (req) =>
                 {
                     try
                     {
@@ -296,7 +296,7 @@ namespace tests
 
             try
             {
-                var host = Host.Start("localhost", 8000, token, async (req) =>
+                var host = Host.StartAsync("localhost", 8000, token, async (req) =>
                 {
                     var delayLength = random.Next(0, 3) * 1000;
 
@@ -335,7 +335,7 @@ namespace tests
             var token = new CancellationTokenSource();
             token.CancelAfter(2000);
 
-            await Host.Start("localhost", 8000, token, "Hello world!");
+            await Host.StartAsync("localhost", 8000, token, "Hello world!");
 
             Assert.True(true);
         }

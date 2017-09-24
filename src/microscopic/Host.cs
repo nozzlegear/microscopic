@@ -69,7 +69,7 @@ namespace Microscopic
             context.Response.Close();
         }
 
-        public static Task Start(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
+        public static Task StartAsync(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
         {
             return Task.Run(async () =>
             {
@@ -117,14 +117,14 @@ namespace Microscopic
             });
         }
 
-        public static Task Start(string host, int port, CancellationTokenSource token, Func<Request, IResponse> handler)
+        public static Task StartAsync(string host, int port, CancellationTokenSource token, Func<Request, IResponse> handler)
         {
-            return Start(host, port, token, (req) => Task.Run<IResponse>(() => handler(req)));
+            return StartAsync(host, port, token, (req) => Task.Run<IResponse>(() => handler(req)));
         }
 
-        public static Task Start(string host, int port, CancellationTokenSource token, string html)
+        public static Task StartAsync(string host, int port, CancellationTokenSource token, string html)
         {
-            return Start(host, port, token, (req) => Html(html));
+            return StartAsync(host, port, token, (req) => Html(html));
         }
     }
 }
