@@ -69,49 +69,52 @@ namespace Microscopic
             context.Response.Close();
         }
 
-        public static async Task Start(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
+        public static Task Start(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
         {
-            var listener = new HttpListener();
-            var address = BuildListenerPrefix(host, port);
-
-            listener.Prefixes.Add(address);
-            listener.Start();
-
-            Console.WriteLine($"Microscopic: accepting connections at {address}");
-
-            var queue = new HashSet<Task>();
-
-            for (int i = 0; i < 100; i++)
+            return Task.Run(async () =>
             {
-                queue.Add(listener.GetContextAsync());
-            }
+                var listener = new HttpListener();
+                var address = BuildListenerPrefix(host, port);
 
-            while (!token.IsCancellationRequested)
-            {
-                // Was previously using `var task = await Task.WhenAny(queue)` to wait for tasks and get the next completed one,
-                // but that introduced an issue where a token could never break the loop via cancelling until a request was received
-                // (and the request task completed thus continuing the loop).
-                var task = queue.FirstOrDefault(t => t.IsCompleted);
+                listener.Prefixes.Add(address);
+                listener.Start();
 
-                if (task == null)
+                Console.WriteLine($"Microscopic: accepting connections at {address}");
+
+                var queue = new HashSet<Task>();
+
+                for (int i = 0; i < 100; i++)
                 {
-                    continue;
-                }
-
-                // Remove the task from the queue. It maybe a listener with a request, or a completed handler.
-                queue.Remove(task);
-
-                if (task is Task<HttpListenerContext>)
-                {
-                    var context = await (task as Task<HttpListenerContext>);
-
-                    // Add the handler to the async queue, then add a new listener to get us back to the desired number of listeners.
-                    queue.Add(ProcessRequestAsync(context, handler));
                     queue.Add(listener.GetContextAsync());
                 }
-            }
 
-            listener.Stop();
+                while (!token.IsCancellationRequested)
+                {
+                    // Was previously using `var task = await Task.WhenAny(queue)` to wait for tasks and get the next completed one,
+                    // but that introduced an issue where a token could never break the loop via cancelling until a request was received
+                    // (and the request task completed thus continuing the loop).
+                    var task = queue.FirstOrDefault(t => t.IsCompleted);
+
+                    if (task == null)
+                    {
+                        continue;
+                    }
+
+                    // Remove the task from the queue. It maybe a listener with a request, or a completed handler.
+                    queue.Remove(task);
+
+                    if (task is Task<HttpListenerContext>)
+                    {
+                        var context = await (task as Task<HttpListenerContext>);
+
+                        // Add the handler to the async queue, then add a new listener to get us back to the desired number of listeners.
+                        queue.Add(ProcessRequestAsync(context, handler));
+                        queue.Add(listener.GetContextAsync());
+                    }
+                }
+
+                listener.Stop();
+            });
         }
 
         public static Task Start(string host, int port, CancellationTokenSource token, Func<Request, IResponse> handler)
