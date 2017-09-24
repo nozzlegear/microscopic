@@ -196,5 +196,18 @@ namespace tests
 
             await host;
         }
+
+        [Fact(DisplayName = "Token stops server without any requests")]
+        public async Task StopsWithoutRequests()
+        {
+            // Because of the way the server queue handlers are implemented (while loop that waits on listener tasks), we need to make sure
+            // that a token can stop the server without first completing a task loop.
+            var token = new CancellationTokenSource();
+            token.CancelAfter(2000);
+
+            await Host.Start("localhost", 8000, token, "Hello world!");
+
+            Assert.True(true);
+        }
     }
 }

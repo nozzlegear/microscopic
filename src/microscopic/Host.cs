@@ -88,9 +88,15 @@ namespace Microscopic
 
             while (!token.IsCancellationRequested)
             {
-                token.Token.ThrowIfCancellationRequested();
+                // Was previously using `var task = await Task.WhenAny(queue)` to wait for tasks and get the next completed one,
+                // but that introduced an issue where a token could never break the loop via cancelling until a request was received
+                // (and the request task completed thus continuing the loop).
+                var task = queue.FirstOrDefault(t => t.IsCompleted);
 
-                var task = await Task.WhenAny(queue);
+                if (task == null)
+                {
+                    continue;
+                }
 
                 // Remove the task from the queue. It maybe a listener with a request, or a completed handler.
                 queue.Remove(task);
