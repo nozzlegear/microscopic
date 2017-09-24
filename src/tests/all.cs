@@ -7,194 +7,324 @@ using System.Threading;
 using System.Net.Http;
 using Xunit.Sdk;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using System.Text;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Linq;
 
 namespace tests
 {
     public class All
     {
+        private string GetHeaderValue(HttpResponseHeaders headers, string key)
+        {
+            if (!headers.Contains(key))
+            {
+                return null;
+            }
+
+            var values = headers.GetValues(key);
+
+            return values.First();
+        }
+
+        private string GetHeaderValue(HttpContentHeaders headers, string key)
+        {
+            if (!headers.Contains(key))
+            {
+                return null;
+            }
+
+            var values = headers.GetValues(key);
+
+            return values.First();
+        }
+
+        private async Task<HttpResponseMessage> SendRequest()
+        {
+            return await SendRequest("http://localhost:8000", HttpMethod.Get);
+        }
+
+        private async Task<HttpResponseMessage> SendRequest(string url, HttpMethod method)
+        {
+            var headers = new Dictionary<string, string>();
+
+            return await SendRequest(url, method, headers);
+        }
+
+        private async Task<HttpResponseMessage> SendRequest(string url, HttpMethod method, Dictionary<string, string> headers, object body = null)
+        {
+            using (var client = new HttpClient())
+            {
+                var message = new HttpRequestMessage(method, url);
+
+                if (body != null)
+                {
+                    message.Content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+                }
+
+                foreach (var header in headers)
+                {
+                    message.Headers.Add(header.Key, header.Value);
+                }
+
+                return await client.SendAsync(message);
+            }
+        }
+
         [Fact(DisplayName = "Returns Html")]
         public async Task Html()
         {
+            string expected = "<h1>Hello world! Microscopic can return HTML strings.</h1>";
             var token = new CancellationTokenSource();
-            token.CancelAfter(2000);
 
-            await Host.Start("localhost", 8000, token, "<h1>Hello world! Microscopic can return HTML strings.</h1>");
+            try
+            {
+                var host = Host.Start("localhost", 8000, token, expected);
+                var response = await SendRequest();
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                token.Cancel();
+                await host;
+
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.Equal("text/html", GetHeaderValue(response.Content.Headers, "Content-Type"));
+                Assert.Equal(expected, responseBody);
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    token.Cancel();
+                }
+            }
+
         }
 
         [Fact(DisplayName = "Returns strings")]
         public async Task Strings()
         {
-            int i = 0;
+            string expected = "<hello>world</hello>";
             var token = new CancellationTokenSource();
-            var host = Host.Start("localhost", 8000, token, (req) =>
-            {
-                i++;
-                return new StringResponse($"<hello>world ${i}</hello>", "application/xml");
-            });
 
-            while (true)
+            try
             {
-                if (i >= 3)
+                var host = Host.Start("localhost", 8000, token, (req) => new StringResponse(expected, "application/xml"));
+                var response = await SendRequest();
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                token.Cancel();
+                await host;
+
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.Equal("application/xml", GetHeaderValue(response.Content.Headers, "Content-Type"));
+                Assert.Equal(expected, responseBody);
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
                 {
                     token.Cancel();
-                    break;
                 }
             }
-
-            await host;
         }
 
         [Fact(DisplayName = "Returns JSON")]
         public async Task Json()
         {
+            var data = new { hello = "world", foo = true };
+            string expected = JsonConvert.SerializeObject(data);
             var token = new CancellationTokenSource();
-            int i = 0;
 
-            var host = Host.Start("localhost", 8000, token, (req) =>
+            try
             {
-                i++;
-                return Host.Json(new { hello = "world", foo = true });
-            });
+                var host = Host.Start("localhost", 8000, token, (req) => Host.Json(data));
+                var response = await SendRequest();
+                var responseBody = await response.Content.ReadAsStringAsync();
 
-            while (true)
+                token.Cancel();
+                await host;
+
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.Equal("application/json", GetHeaderValue(response.Content.Headers, "Content-Type"));
+                Assert.Equal(expected, responseBody);
+            }
+            finally
             {
-                if (i >= 1)
+                if (!token.IsCancellationRequested)
                 {
                     token.Cancel();
-                    break;
                 }
             }
-
-            await host;
         }
 
         [Fact(DisplayName = "Handles Async")]
         public async Task HandlesAsync()
         {
+            string expected = "<h1>Microscopic sent this string after waiting 1 seconds asynchronously.</h1>";
             var token = new CancellationTokenSource();
-            int i = 0;
 
-            var host = Host.Start("localhost", 8000, token, async (req) =>
+            try
             {
-                await Task.Delay(1000);
+                var host = Host.Start("localhost", 8000, token, async (req) =>
+                {
+                    await Task.Delay(1000);
 
-                i++;
+                    return Host.Html(expected);
+                });
+                var response = await SendRequest();
+                var responseBody = await response.Content.ReadAsStringAsync();
 
-                return Host.Html("<h1>Microscopic sent this string after waiting 1 seconds asynchronously.</h1>");
-            });
+                token.Cancel();
+                await host;
 
-            while (true)
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.Equal("text/html", GetHeaderValue(response.Content.Headers, "Content-Type"));
+                Assert.Equal(expected, responseBody);
+            }
+            finally
             {
-                if (i >= 1)
+                if (!token.IsCancellationRequested)
                 {
                     token.Cancel();
-                    break;
                 }
             }
-
-            await host;
         }
 
         [Fact(DisplayName = "Catches errors")]
         public async Task CatchesErrors()
         {
+            string expected = "My random exception message.";
             var token = new CancellationTokenSource();
-            bool thrown = false;
+            bool shouldThrow = true;
 
-            var host = Host.Start("localhost", 8000, token, (req) =>
+            try
             {
-                if (!thrown)
+                var host = Host.Start("localhost", 8000, token, (req) =>
                 {
-                    thrown = true;
+                    if (shouldThrow)
+                    {
+                        throw new Exception(expected);
+                    }
 
-                    throw new Exception("Something crazy happened by Microscopic caught it and didn't take down the server!");
+                    return Host.Html(expected);
+                });
+                var response = await SendRequest();
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                token.Cancel();
+                await host;
+
+                Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+                Assert.Equal("application/json", GetHeaderValue(response.Content.Headers, "Content-Type"));
+                Assert.Contains(expected, responseBody);
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    token.Cancel();
                 }
-
-                return Host.Html("Donezo");
-            });
-
-            while (!thrown) { }
-
-            token.Cancel();
-
-            await host;
+            }
         }
 
         [Fact(DisplayName = "Has all expected properties")]
         public async Task HasProperties()
         {
-            var token = new CancellationTokenSource();
             Exception exception = null;
-            var host = Host.Start("localhost", 8000, token, (req) =>
-            {
-                try
-                {
-                    Assert.NotNull(req.AcceptTypes);
-                    Assert.NotNull(req.Cookies);
-                    Assert.NotNull(req.Headers);
-                    Assert.True(req.IsLocal);
-                    Assert.Equal(HttpMethod.Get, req.Method);
-                    Assert.NotNull(req.QueryString);
-                    Assert.NotEmpty(req.RawUrl);
-                    // Assert.NotNull(req.Referrer);
-                    Assert.NotEmpty(req.RequestId);
-                    Assert.NotNull(req.Url);
-                    // Assert.NotNull(req.UserAgent);
-                    Assert.NotEmpty(req.UserHostAddress);
-                    Assert.NotEmpty(req.UserHostName);
-                }
-                catch (XunitException ex)
-                {
-                    // Wrap the original exception to preserve its stack trace. If you don't do this the stack trace will say this catch block threw the exception rather than the assertion.
-                    exception = new Exception(ex.Message, ex);
+            var token = new CancellationTokenSource();
 
+            try
+            {
+                var host = Host.Start("localhost", 8000, token, (req) =>
+                {
+                    try
+                    {
+                        Assert.NotNull(req.AcceptTypes);
+                        Assert.NotNull(req.Cookies);
+                        Assert.NotNull(req.Headers);
+                        Assert.True(req.IsLocal);
+                        Assert.Equal(HttpMethod.Get, req.Method);
+                        Assert.NotNull(req.QueryString);
+                        Assert.NotEmpty(req.RawUrl);
+                        // Assert.NotNull(req.Referrer);
+                        Assert.NotEmpty(req.RequestId);
+                        Assert.NotNull(req.Url);
+                        // Assert.NotNull(req.UserAgent);
+                        Assert.NotEmpty(req.UserHostAddress);
+                        Assert.NotEmpty(req.UserHostName);
+                    }
+                    catch (XunitException ex)
+                    {
+                        // Wrap the original exception to preserve its stack trace. If you don't do this the stack trace will say this catch block threw the exception rather than the assertion.
+                        exception = new Exception(ex.Message, ex);
+
+                        throw exception;
+                    }
+
+                    return Host.Empty();
+                });
+                var response = await SendRequest();
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                token.Cancel();
+                await host;
+
+                if (exception != null)
+                {
                     throw exception;
                 }
-                finally
+
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
                 {
                     token.Cancel();
                 }
-
-                return Host.Empty();
-            });
-
-            while (!token.IsCancellationRequested) { }
-
-            await host;
-
-            if (exception != null)
-            {
-                throw exception;
             }
         }
 
         [Fact(DisplayName = "Does not drop requests.")]
         public async Task DoesNotDropRequests()
         {
-            int i = 8;
+            string expected = "<h1>Hello world! This test tries to ensure that Microscopic does not drop request queues.</h1>";
             var random = new Random();
             var token = new CancellationTokenSource();
-            var queue = new HashSet<Task>();
-            var host = Host.Start("localhost", 8000, token, async (req) =>
+
+            try
             {
-                i--;
+                var host = Host.Start("localhost", 8000, token, async (req) =>
+                {
+                    var delayLength = random.Next(0, 3) * 1000;
 
-                var delayLength = i <= 0 ? 0 : i * 1000;
-                var wait = Task.Delay(delayLength);
+                    await Task.Delay(delayLength);
 
-                // Add the task to the queue so the while loop doesn't stop the server before it finishes. Then await it and remove it from the queue once done.
-                queue.Add(wait);
-                await wait;
-                queue.Remove(wait);
+                    return Host.Html(expected);
+                });
 
-                return new StringResponse(i.ToString());
-            });
+                await Task.WhenAll(Enumerable.Range(0, 100).Select(async (i) =>
+                {
+                    var response = await SendRequest();
+                    var responseBody = await response.Content.ReadAsStringAsync();
 
-            while (i > 0 || queue.Count > 0) { }
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    Assert.Equal("text/html", GetHeaderValue(response.Content.Headers, "Content-Type"));
+                    Assert.Equal(expected, responseBody);
+                }));
 
-            token.Cancel();
-
-            await host;
+                token.Cancel();
+                await host;
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    token.Cancel();
+                }
+            }
         }
 
         [Fact(DisplayName = "Token stops server without any requests")]
