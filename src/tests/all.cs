@@ -181,7 +181,7 @@ namespace tests
                 {
                     await Task.Delay(1000);
 
-                    return Host.Html(expected);
+                    return expected;
                 });
                 var response = await SendRequest();
                 var responseBody = await response.Content.ReadAsStringAsync();
@@ -218,7 +218,7 @@ namespace tests
                         throw new Exception(expected);
                     }
 
-                    return Host.Html(expected);
+                    return expected;
                 });
                 var response = await SendRequest();
                 var responseBody = await response.Content.ReadAsStringAsync();
@@ -312,7 +312,7 @@ namespace tests
 
                     await Task.Delay(delayLength);
 
-                    return Host.Html(expected);
+                    return expected;
                 });
 
                 await Task.WhenAll(Enumerable.Range(0, 100).Select(async (i) =>
@@ -381,7 +381,7 @@ namespace tests
                     Assert.Equal(data.Bar, body.Bar);
                     Assert.Equal(data.Baz, body.Baz);
 
-                    return Host.Html(expected);
+                    return expected;
                 });
 
                 var result = await SendRequest("http://localhost:8000", HttpMethod.Get, new Dictionary<string, string>(), data);
@@ -416,7 +416,7 @@ namespace tests
                     Assert.True(req.Headers.AllKeys.Any(k => k == headerName));
                     Assert.Equal(headerValue, req.Headers.Get(headerName));
 
-                    return Host.Html(expected);
+                    return expected;
                 });
 
                 var request = await SendRequest("http://localhost:8000", HttpMethod.Get, new Dictionary<string, string> { { headerName, headerValue } });
