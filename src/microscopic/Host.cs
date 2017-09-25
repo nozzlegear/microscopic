@@ -11,7 +11,7 @@ using Microscopic.Responses;
 
 namespace Microscopic
 {
-    public static class Host
+    public static class Listener
     {
         static string BuildListenerPrefix(string host, int port)
         {
