@@ -1,6 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Microscopic</AssemblyName>
+    <RootNamespace>Microscopic</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+    <PropertyGroup>
+    <Description>A tiny .NET package for serving HTTP microservices. Based off of Zeit's micro for Node.</Description>
+    <Authors>Nozzlegear</Authors>
+    <Copyright>Nozzlegear Software</Copyright>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/nozzlegear/microscopic/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/nozzlegear/microscopic</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/nozzlegear/microscopic</RepositoryUrl>
+    <PackageTags>functions,micro,zeit,serverless,microservice</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="newtonsoft.json" Version="10.0.3" />
