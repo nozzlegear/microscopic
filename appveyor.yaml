@@ -1,9 +1,9 @@
 version: 1.0.{build}
 image: Visual Studio 2017
 build_script:
-- ps: ./scripts/build.ps1
+- ps: ./build.ps1
 test_script:
-- ps: ./scripts/test.ps1
+- ps: ./test.ps1
 artifacts:
 - path: src/microscopic/bin/Release/netstandard2.0
   name: netstandard20
