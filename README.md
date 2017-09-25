@@ -2,6 +2,10 @@
 
 A tiny .NET package for serving HTTP microservices. Based off of Zeit's micro for Node.
 
+[![NuGet](https://img.shields.io/nuget/v/microscopic.svg?maxAge=3600)](https://www.nuget.org/packages/microscopic/)
+[![Build status](https://ci.appveyor.com/api/projects/status/58l0gs6cqak3xtlf/branch/master?svg=true)](https://ci.appveyor.com/project/nozzlegear/microscopic/branch/master)
+[![license](https://img.shields.io/github/license/nozzlegear/microscopic.svg?maxAge=3600)](https://github.com/nozzlegear/microscopic/blob/master/LICENSE)
+
 # Features
 
 - **Easy**: Designed for usage with async and await.
