@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Microscopic.Responses
 {
@@ -8,6 +10,6 @@ namespace Microscopic.Responses
 
         int StatusCode { get; set; }
 
-        string SerializeToString();
+        Task<Stream> SerializeToStreamAsync();
     }
 }

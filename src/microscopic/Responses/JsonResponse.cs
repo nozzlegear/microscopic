@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace Microscopic.Responses
@@ -19,9 +21,15 @@ namespace Microscopic.Responses
 
         public Dictionary<string, string> Headers { get; } = new Dictionary<string, string>();
 
-        public string SerializeToString()
+        public Task<Stream> SerializeToStreamAsync()
         {
-            return JsonConvert.SerializeObject(Value);
+            return Task.Run<Stream>(() =>
+            {
+                var content = JsonConvert.SerializeObject(Value);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+
+                return new MemoryStream(bytes);
+            });
         }
     }
 }

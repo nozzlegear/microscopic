@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -24,19 +25,14 @@ namespace Microscopic
             return builder.ToString();
         }
 
+        public static IResponse PlainText(string value)
+        {
+            return new StringResponse(value, "text/plain");
+        }
+
         public static IResponse Json(object value)
         {
             return new JsonResponse(value);
-        }
-
-        public static IResponse File(string fileName)
-        {
-            return new StringResponse(System.IO.File.ReadAllText(fileName));
-        }
-
-        public static IResponse Html(string html)
-        {
-            return new HtmlResponse(html);
         }
 
         public static IResponse Empty()
@@ -72,13 +68,18 @@ namespace Microscopic
                 }
             }
 
-            var stringBytes = System.Text.Encoding.UTF8.GetBytes(result.SerializeToString());
+            using (var responseStream = await result.SerializeToStreamAsync())
+            {
+                context.Response.StatusCode = result.StatusCode;
+                context.Response.ContentType = result.Headers.FirstOrDefault(x => x.Key == "Content-Type").Value ?? "text/html";
+                context.Response.ContentLength64 = responseStream.Length;
 
-            context.Response.StatusCode = result.StatusCode;
-            context.Response.ContentType = result.Headers.FirstOrDefault(x => x.Key == "Content-Type").Value ?? "text/html";
-            context.Response.ContentLength64 = stringBytes.Length;
-            context.Response.OutputStream.Write(stringBytes, 0, stringBytes.Length);
-            context.Response.Close();
+                // Copy the response stream to the output stream
+                await responseStream.CopyToAsync(context.Response.OutputStream);
+
+                // Close the response to send it to the user
+                context.Response.Close();
+            }
         }
 
         public static Task StartAsync(string host, int port, CancellationTokenSource token, Func<Request, Task<IResponse>> handler)
@@ -134,9 +135,24 @@ namespace Microscopic
             return StartAsync(host, port, token, (req) => Task.Run<IResponse>(() => handler(req)));
         }
 
+        public static Task StartAsync(string host, int port, CancellationTokenSource token, Func<Request, string> handler)
+        {
+            return StartAsync(host, port, token, (req) => Task.Run<IResponse>(() => new HtmlResponse(handler(req))));
+        }
+
+        public static Task StartAsync(string host, int port, CancellationTokenSource token, Func<Request, Task<string>> handler)
+        {
+            return StartAsync(host, port, token, async (req) =>
+            {
+                string response = await handler(req);
+
+                return new HtmlResponse(response);
+            });
+        }
+
         public static Task StartAsync(string host, int port, CancellationTokenSource token, string html)
         {
-            return StartAsync(host, port, token, (req) => Html(html));
+            return StartAsync(host, port, token, (req) => new HtmlResponse(html));
         }
     }
 }

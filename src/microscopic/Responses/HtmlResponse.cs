@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Microscopic.Responses
 {
@@ -17,9 +19,14 @@ namespace Microscopic.Responses
 
         public Dictionary<string, string> Headers { get; } = new Dictionary<string, string>();
 
-        public string SerializeToString()
+        public Task<Stream> SerializeToStreamAsync()
         {
-            return Html;
+            return Task.Run<Stream>(() =>
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(Html);
+
+                return new MemoryStream(bytes);
+            });
         }
     }
 }
