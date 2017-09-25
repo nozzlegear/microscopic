@@ -400,5 +400,40 @@ namespace tests
                 }
             }
         }
+
+        [Fact(DisplayName = "Receives headers")]
+        public async Task ReceivesHeaders()
+        {
+            string headerName = "x-random-header";
+            string headerValue = "Hello world! This is a header.";
+            string expected = "Assertions passed.";
+            var token = new CancellationTokenSource();
+
+            try
+            {
+                var host = Host.StartAsync("localhost", 8000, token, (req) =>
+                {
+                    Assert.True(req.Headers.AllKeys.Any(k => k == headerName));
+                    Assert.Equal(headerValue, req.Headers.Get(headerName));
+
+                    return Host.Html(expected);
+                });
+
+                var request = await SendRequest("http://localhost:8000", HttpMethod.Get, new Dictionary<string, string> { { headerName, headerValue } });
+                var output = await request.Content.ReadAsStringAsync();
+
+                token.Cancel();
+                await host;
+
+                Assert.Equal(expected, output);
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    token.Cancel();
+                }
+            }
+        }
     }
 }
