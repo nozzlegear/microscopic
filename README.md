@@ -5,8 +5,8 @@ A tiny .NET package for serving HTTP microservices. Based off of Zeit's micro fo
 # Features
 
 - **Easy**: Designed for usage with async and await.
-- **Micro**: The whole project is ~260 lines of code.
-- **Agile**: Super easy deployment and containerization.
+- **Micro**: The whole project is ~350 lines of code.
+- **Agile**: Super easy deployment and containerization. Just run Microscopic in a dotnet console app!
 - **Simple**: Designed for single-purpose HTTP functions.
 - **Standard**: Uses System.Net.HttpListener to create a tiny HTTP listener.
 - **Explicit**: No middleware or frameworks getting in the way.
