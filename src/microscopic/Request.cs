@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 
@@ -11,6 +12,7 @@ namespace Microscopic
         public Request(HttpListenerRequest source)
         {
             AcceptTypes = source.AcceptTypes ?? new string[] { };
+            BodyStream = source.InputStream;
             Cookies = source.Cookies;
             HasBody = source.HasEntityBody;
             Headers = source.Headers;
@@ -29,6 +31,11 @@ namespace Microscopic
         }
 
         public IEnumerable<string> AcceptTypes { get; }
+
+        /// <summary>
+        /// The request body as a stream. May be null.
+        /// </summary>
+        public Stream BodyStream { get; }
 
         public CookieCollection Cookies { get; }
 

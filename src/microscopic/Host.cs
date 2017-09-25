@@ -60,6 +60,18 @@ namespace Microscopic
                 result.StatusCode = 500;
             }
 
+            if (req.HasBody)
+            {
+                try
+                {
+                    req.BodyStream.Dispose();
+                }
+                catch (Exception)
+                {
+                    // Already disposed
+                }
+            }
+
             var stringBytes = System.Text.Encoding.UTF8.GetBytes(result.SerializeToString());
 
             context.Response.StatusCode = result.StatusCode;

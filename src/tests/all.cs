@@ -12,9 +12,19 @@ using System.Text;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Linq;
+using System.IO;
 
 namespace tests
 {
+    public class TestClass
+    {
+        public string Foo { get; set; }
+
+        public bool Bar { get; set; }
+
+        public int Baz { get; set; }
+    }
+
     public class All
     {
         private string GetHeaderValue(HttpResponseHeaders headers, string key)
@@ -338,6 +348,57 @@ namespace tests
             await Host.StartAsync("localhost", 8000, token, "Hello world!");
 
             Assert.True(true);
+        }
+
+        [Fact(DisplayName = "Request has BodyStream")]
+        public async Task HasBodyStream()
+        {
+            string expected = "Assertions passed.";
+            var data = new TestClass()
+            {
+                Foo = "Hello world!",
+                Bar = true,
+                Baz = 117
+            };
+            var token = new CancellationTokenSource();
+
+            try
+            {
+                var host = Host.StartAsync("localhost", 8000, token, async (req) =>
+                {
+                    Assert.True(req.HasBody);
+                    Assert.NotNull(req.BodyStream);
+
+                    TestClass body;
+
+                    using (var reader = new StreamReader(req.BodyStream))
+                    {
+                        var json = await reader.ReadToEndAsync();
+                        body = JsonConvert.DeserializeObject<TestClass>(json);
+                    }
+
+                    Assert.Equal(data.Foo, body.Foo);
+                    Assert.Equal(data.Bar, body.Bar);
+                    Assert.Equal(data.Baz, body.Baz);
+
+                    return Host.Html(expected);
+                });
+
+                var result = await SendRequest("http://localhost:8000", HttpMethod.Get, new Dictionary<string, string>(), data);
+                var output = await result.Content.ReadAsStringAsync();
+
+                token.Cancel();
+                await host;
+
+                Assert.Equal(expected, output);
+            }
+            finally
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    token.Cancel();
+                }
+            }
         }
     }
 }
